@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { BedrockEmailSupportAgentStack } from '../lib/bedrock_email_support_agent-stack';
+import { BedrockEmailSupportAgentStack } from '../lib/email_support_agent-stack';
 
 const app = new cdk.App();
-new BedrockEmailSupportAgentStack(app, 'BedrockEmailSupportAgentStack', {
+new BedrockEmailSupportAgentStack(app, 'EmailSupportAgent', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */

@@ -7,6 +7,8 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
+    "initlambdalayer": "cd ./lambda/lambda-layer/nodejs && npm install && cd ../../../",
+    "postinstall": "npm run initlambdalayer",
     "cdk": "cdk"
   },
   "devDependencies": {
@@ -17,6 +19,7 @@
     "typescript": "~5.5.3"
   },
   "dependencies": {
+    "@aws/agents-for-amazon-bedrock-blueprints": "^1.0.0",
     "aws-cdk-lib": "2.151.0",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"
