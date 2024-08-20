@@ -5,6 +5,7 @@ import { aws_bedrock as bedrock } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as opensearch from 'aws-cdk-lib/aws-opensearchserverless';
 import { KnowledgeBaseDataSyncCustomResource } from './kb-data-sync-cr';
+import { knowledge_base_datasource_name, knowledge_base_name, knowledge_base_role_name, oss_collection_metadata_field_name, oss_collection_text_field_name, oss_collection_vector_field_name, oss_collection_vector_index_name } from '../name_constants';
 
 
 export class KbBedrockKbConstruct extends Construct {
@@ -16,7 +17,7 @@ export class KbBedrockKbConstruct extends Construct {
     {
         super(scope, id);
         const knowledgeBaseRole = new iam.Role(this, 'knowledgeBaseExecutionRole', {
-          roleName:'knowledgeBaseExecutionRole',
+          roleName:knowledge_base_role_name,
           assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
           description: 'Role assumed by Bedrock Knowledge Base Service',
         });
@@ -70,7 +71,7 @@ export class KbBedrockKbConstruct extends Construct {
     
         const knowledgeBase = new bedrock.CfnKnowledgeBase(this, 'bedrockKnowledgeBase', {
           description: 'knowledge base to hold support Q&A',
-          name: 'bedrockKnowledgeBase',
+          name: knowledge_base_name,
           knowledgeBaseConfiguration: {
             type: 'VECTOR',
             vectorKnowledgeBaseConfiguration: {
@@ -83,11 +84,11 @@ export class KbBedrockKbConstruct extends Construct {
             opensearchServerlessConfiguration: {
               collectionArn: props.ossCollection.attrArn,
               fieldMapping: {
-                metadataField: 'AMAZON_BEDROCK_METADATA',
-                textField: 'AMAZON_BEDROCK_TEXT_CHUNK',
-                vectorField: 'bedrock-knowledge-base-default-vector'
+                metadataField: oss_collection_metadata_field_name,
+                textField: oss_collection_text_field_name,
+                vectorField: oss_collection_vector_field_name
               },
-              vectorIndexName: 'bedrock-knowledge-base-default-index'
+              vectorIndexName: oss_collection_vector_index_name
             }
           }
         });
@@ -96,7 +97,7 @@ export class KbBedrockKbConstruct extends Construct {
         knowledgeBase.node.addDependency(props.bucket);
         knowledgeBase.node.addDependency(props.ossCollection);
         const dataSource = new bedrock.CfnDataSource(this, 'KnowledgeBaseDataSource', {
-          name: 'knowledgeBaseDataSource',
+          name: knowledge_base_datasource_name,
           dataSourceConfiguration: {
             s3Configuration: {
               bucketArn: props.bucket.bucketArn,

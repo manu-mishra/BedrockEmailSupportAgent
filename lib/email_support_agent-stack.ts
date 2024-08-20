@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { BedrockAgentStack, BedrockKbStack, WorkMailStack } from './nested-stacks';
+import { BedrockAgentConstruct, BedrockKbConstruct, WorkMailConstruct } from './constructs';
 import { NodejsLambdaLayerConstruct } from './constructs';
 
 
@@ -9,14 +9,14 @@ export class BedrockEmailSupportAgentStack extends cdk.Stack {
     super(scope, id, props);
 
     const lambdaLayer = new NodejsLambdaLayerConstruct(this, 'NodeJsLambdaLayer').lambdaLayer;
-    const kbStack = new BedrockKbStack(this, 'BedrockKbStack', { lambdaLayer: lambdaLayer });
+    const kbStack = new BedrockKbConstruct(this, 'BedrockKbConstruct', { lambdaLayer: lambdaLayer });
     
-    //CReate Agent Flow.
-    const agentStack = new BedrockAgentStack(this, 'BedrockAgentStack', { bedrockKb: kbStack.bedrockKnowledgeBase });
-    agentStack.addDependency(kbStack);
+    //Create Agent Flow.
+    const agentStack = new BedrockAgentConstruct(this, 'BedrockAgentConstruct', { bedrockKb: kbStack.bedrockKnowledgeBase });
+    agentStack.node.addDependency(kbStack);
     
     //Create WorkMail based flow
-    const workmailStack = new WorkMailStack(this, 'WorkmailIntegrationStack', {lambdaLayer:lambdaLayer, agent:agentStack.agent, agentAlias: agentStack.agentAlias});
-    workmailStack.addDependency(agentStack)
+    const workmailStack = new WorkMailConstruct(this, 'WorkmailIntegrationConstruct', {lambdaLayer:lambdaLayer, agent:agentStack.agent, agentAlias: agentStack.agentAlias});
+    workmailStack.node.addDependency(agentStack)
   }
 }

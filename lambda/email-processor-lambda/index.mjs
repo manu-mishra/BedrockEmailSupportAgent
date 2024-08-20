@@ -1,19 +1,13 @@
 import { WorkMailMessageFlowClient, GetRawMessageContentCommand } from "@aws-sdk/client-workmailmessageflow";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { Readable } from 'stream';
+import { simpleParser } from 'mailparser';
 import { BedrockAgentRuntimeClient, InvokeAgentCommand } from "@aws-sdk/client-bedrock-agent-runtime";
-import { TextDecoder } from 'util';
 
 const workMailClient = new WorkMailMessageFlowClient({ region: process.env.AWS_REGION });
 const sesClient = new SESClient({ region: process.env.AWS_REGION });
 
-async function streamToString(stream) {
-    const chunks = [];
-    const readable = Readable.from(stream);
-    for await (const chunk of readable) {
-        chunks.push(chunk.toString());
-    }
-    return chunks.join('');
+async function parseEmailContent(stream) {
+    return simpleParser(stream);
 }
 
 async function invokeBedrockAgent(emailInfo, sessionId) {
@@ -45,11 +39,8 @@ async function invokeBedrockAgent(emailInfo, sessionId) {
 
 async function sendResponseEmail(emailResponse, originalEmailInfo) {
     const sourceEmail = process.env.SUPPORT_EMAIL_ADDRESS;
-    const destinationEmail = originalEmailInfo.From; // Assuming this is formatted correctly
-    
-    // Check if 'Re:' is already present in the subject
-    const subjectPrefix = originalEmailInfo.Subject.startsWith("Re:") ? "" : "Re: ";
-    
+    const destinationEmail = originalEmailInfo.from.text; // Updated to use parsed email info
+
     const responseEmail = {
         Source: sourceEmail,
         Destination: {
@@ -57,11 +48,11 @@ async function sendResponseEmail(emailResponse, originalEmailInfo) {
         },
         Message: {
             Subject: {
-                Data: `${subjectPrefix}${originalEmailInfo.Subject}`
+                Data: `${originalEmailInfo.subject}`
             },
             Body: {
                 Text: {
-                    Data: `${emailResponse}\n\n---\nOriginal Message:\nFrom: ${originalEmailInfo.From}\nSubject: ${originalEmailInfo.Subject}\n\n${originalEmailInfo.Body}`
+                    Data: `${emailResponse}\n\n---\nOriginal Message:\nFrom: ${originalEmailInfo.from.text}\nSubject: ${originalEmailInfo.subject}\n\n${originalEmailInfo.text}`
                 }
             }
         }
@@ -77,33 +68,28 @@ async function sendResponseEmail(emailResponse, originalEmailInfo) {
     }
 }
 
-
 export async function handler(event) {
+
     const msgId = event.messageId;
+    console.log(JSON.stringify(event));
     console.log(`An Email received with messageId: [${msgId}]`);
 
     try {
         const rawMsgCommand = new GetRawMessageContentCommand({ messageId: msgId });
         const rawMsgResponse = await workMailClient.send(rawMsgCommand);
-        const emailContent = await streamToString(rawMsgResponse.messageContent);
 
-        // Extract email headers and body
-        const subjectMatch = emailContent.match(/^Subject: (.*)$/im);
-        const fromMatch = emailContent.match(/^From: (.*)$/im);
-        const bodyMatch = emailContent.split(/\r?\n\r?\n/).slice(1).join('\n').trim();
-
+        const emailParsed = await parseEmailContent(rawMsgResponse.messageContent);
         const emailInfo = {
-            From: fromMatch ? fromMatch[1] : "Unknown sender",
-            Subject: subjectMatch ? subjectMatch[1] : "No subject",
-            Body: bodyMatch || "No body content"
+            From: emailParsed.from ? emailParsed.from.text : "Unknown sender",
+            Subject: emailParsed.subject ? emailParsed.subject : "No subject",
+            Body: emailParsed.text || "No body content"
         };
 
-        // Invoke the Bedrock agent with the formatted email info
+        console.log(emailInfo);
         const bedrockResult = await invokeBedrockAgent(emailInfo, msgId);
         console.log('Bedrock Agent Response:', bedrockResult);
 
-        // Send response email with Bedrock result and original message
-        await sendResponseEmail(bedrockResult.completion, emailInfo);
+        await sendResponseEmail(bedrockResult.completion, emailParsed);
     } catch (error) {
         console.error(`Error processing message: ${error}`);
         throw error;

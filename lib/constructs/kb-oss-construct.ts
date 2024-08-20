@@ -6,19 +6,18 @@ import * as cr from 'aws-cdk-lib/custom-resources';
 import * as opensearch from 'aws-cdk-lib/aws-opensearchserverless';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import { oss_collection_name, oss_collection_vector_field_name, oss_collection_vector_index_name } from "../name_constants";
 
 export class KbOssConstruct extends Construct {
 
     public ossCollection: opensearch.CfnCollection;
     constructor(scope: Construct, id: string, props:{nodeJsLayer: lambda.LayerVersion;}) {
         super(scope, id);
-        const collectionName = "knowledge-base-collection";
-        const indexName = "bedrock-knowledge-base-default-index"; 
-        const vectorField = "bedrock-knowledge-base-default-vector";  
+
         const dimensions = "1024";
         
         const opensearchCollection = new opensearch.CfnCollection(this, 'KnowledgeBaseCollection', {
-          name: collectionName,
+          name: oss_collection_name,
           type: "VECTORSEARCH",
           description: 'A serverless OpenSearch collection for the knowledge base',
         });
@@ -31,11 +30,11 @@ export class KbOssConstruct extends Construct {
               Rules: [
                 {
                   ResourceType: "collection",
-                  Resource: [`collection/${collectionName}`],
+                  Resource: [`collection/${oss_collection_name}`],
                 },
                 {
                   ResourceType: "dashboard",
-                  Resource: [`collection/${collectionName}`],
+                  Resource: [`collection/${oss_collection_name}`],
                 },
               ],
               AllowFromPublic: true,
@@ -54,7 +53,7 @@ export class KbOssConstruct extends Construct {
             Rules: [
               {
                 ResourceType: "collection",
-                Resource: [`collection/${collectionName}`]
+                Resource: [`collection/${oss_collection_name}`]
               }
             ],
             AWSOwnedKey: true
@@ -62,7 +61,6 @@ export class KbOssConstruct extends Construct {
         });
     
         const logGroup = new LogGroup(this,'CreateKnnIndexCustomResourceLambdaLogGroup',{
-          logGroupName:'CreateKnnIndexCustomResourceLambda',
           logGroupClass: cdk.aws_logs.LogGroupClass.INFREQUENT_ACCESS,
           removalPolicy: cdk.RemovalPolicy.DESTROY
         });
@@ -91,10 +89,10 @@ export class KbOssConstruct extends Construct {
           logGroup:logGroup,
           environment:{
             ENDPOINT: opensearchCollection.attrCollectionEndpoint,
-            INDEX_NAME: indexName,
-            VECTOR_FIELD: vectorField,
+            INDEX_NAME: oss_collection_vector_index_name,
+            VECTOR_FIELD: oss_collection_vector_field_name,
             DIMENSIONS: dimensions,
-            COLLECTION_NAME: collectionName,
+            COLLECTION_NAME: oss_collection_name,
           }
         });
         const dataAccessPolicy = new opensearch.CfnAccessPolicy(this, 'OSSAccessPolicy', {
@@ -104,14 +102,14 @@ export class KbOssConstruct extends Construct {
               Rules: [
                 {
                   ResourceType: 'collection',
-                  Resource: [`collection/${collectionName}`],
+                  Resource: [`collection/${oss_collection_name}`],
                   Permission: [
                     'aoss:*'
                   ],
                 },
                 {
                   ResourceType: 'index',
-                  Resource: [`index/${collectionName}/*`],
+                  Resource: [`index/${oss_collection_name}/*`],
                   Permission: [
                     'aoss:*'
                   ],
@@ -138,6 +136,7 @@ export class KbOssConstruct extends Construct {
         
         
         // // Ensure the custom resource is created after the collection
+        createKnnIndexLambda.node.addDependency(lambdaRole);
         knnIndexResource.node.addDependency(opensearchCollection);
         knnIndexResource.node.addDependency(lambdaRole);
         knnIndexResource.node.addDependency(dataAccessPolicy);

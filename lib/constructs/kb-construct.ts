@@ -1,14 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as path from 'path';
-import { KbBedrockKbConstruct, KbOssConstruct, KbS3Construct } from '../constructs'
+import { KbBedrockKbConstruct, KbOssConstruct, KbS3Construct } from '.'
 
 
-export class BedrockKbStack extends cdk.NestedStack {
+export class BedrockKbConstruct extends Construct {
 public bedrockKnowledgeBase: cdk.aws_bedrock.CfnKnowledgeBase;
     constructor(scope: Construct, id: string, props: cdk.StackProps & {lambdaLayer:lambda.LayerVersion}) {
-        super(scope, id, props);
+        super(scope, id);
 
         const nodejsLambdaLayer = props?.lambdaLayer;
         

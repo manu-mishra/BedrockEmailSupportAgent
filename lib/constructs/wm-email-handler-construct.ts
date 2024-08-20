@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import { email_processor_lambda_name, workmail_org_name } from "../name_constants";
+import * as crypto from 'crypto';
 
 export class WorkmailEmailHandlerConstruct extends Construct {
 
@@ -13,8 +15,10 @@ export class WorkmailEmailHandlerConstruct extends Construct {
         agentAlias: cdk.aws_bedrock.CfnAgentAlias;
      }) {
         super(scope, id);
+        const accountIdHash = this.createAccountIdHash(cdk.Stack.of(this).account);
 
         const logGroup = new LogGroup(this, 'WorkMailEmailHandlerLambdaLogGroup', {
+            logGroupName :`${email_processor_lambda_name}`,
             logGroupClass: cdk.aws_logs.LogGroupClass.STANDARD,
             removalPolicy: cdk.RemovalPolicy.DESTROY
         });
@@ -48,10 +52,10 @@ export class WorkmailEmailHandlerConstruct extends Construct {
 
         // Lambda function to manage WorkMail org and users
         const manageWorkMailLambda = new lambda.Function(this, 'WorkMailEmailHandlerLambda', {
-            functionName: `WorkMailEmailHandlerLambda_${id}`,
+            functionName: email_processor_lambda_name,
             runtime: lambda.Runtime.NODEJS_20_X,
             handler: 'index.handler',
-            code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/email-handler-service')),
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/email-processor-lambda')),
             layers: [props.nodeJsLayer],
             role: lambdaRole,
             timeout: cdk.Duration.minutes(5),
@@ -59,11 +63,16 @@ export class WorkmailEmailHandlerConstruct extends Construct {
             environment:{
                 AGENT_ID:props.agent.attrAgentId,
                 AGENT_ALIAS_ID:props.agentAlias.attrAgentAliasId,
-                SUPPORT_EMAIL_ADDRESS: `support@org-workmailorg-${cdk.Stack.of(scope).account}.awsapps.com`
+                SUPPORT_EMAIL_ADDRESS: `support@${workmail_org_name}-${accountIdHash}.awsapps.com`
             }
         });
 
         const principal = new cdk.aws_iam.ServicePrincipal(`workmail.${cdk.Stack.of(this).region}.amazonaws.com`)        
         manageWorkMailLambda.grantInvoke(principal);
+
+        
+    }
+    private createAccountIdHash(accountId: string): string {
+        return crypto.createHash('sha256').update(accountId).digest('hex').substring(0, 12);
     }
 }

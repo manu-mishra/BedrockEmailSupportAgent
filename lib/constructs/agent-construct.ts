@@ -2,21 +2,23 @@ import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { BedrockAgentBlueprintsConstruct, AgentDefinitionBuilder } from '@aws/agents-for-amazon-bedrock-blueprints';
-import { GetAgentActionGroup, GetGuardRail } from '../constructs';
+import { GetAgentActionGroup, GetGuardRail } from '.';
 import { AgentInstructionPrompt } from '../prompts';
+import { agent_name } from '../name_constants';
 
 
-export class BedrockAgentStack extends cdk.NestedStack {
+
+export class BedrockAgentConstruct extends Construct {
     guardRail: cdk.aws_bedrock.CfnGuardrail;
     agent: cdk.aws_bedrock.CfnAgent;
     agentAlias: cdk.aws_bedrock.CfnAgentAlias;
     agentServiceRole: cdk.aws_iam.Role;
     constructor(scope: Construct, id: string, props: cdk.StackProps & { bedrockKb: cdk.aws_bedrock.CfnKnowledgeBase }) {
-        super(scope, id, props);
+        super(scope, id);
 
         // Define the agent's properties
         const agentDef = new AgentDefinitionBuilder(this, 'AgentProps', {})
-            .withAgentName('restaurant-assistant-agent')
+            .withAgentName(agent_name)
             .withInstruction(AgentInstructionPrompt)
             .withFoundationModel('anthropic.claude-3-sonnet-20240229-v1:0')
             .withUserInput()

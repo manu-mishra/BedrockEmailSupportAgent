@@ -5,6 +5,7 @@ import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam';
 import { join } from 'path';
 import { RestaurantAssistDatabaseConstruct } from './restaurant-assist-database-construct';
+import { agent_booking_action_group_name } from '../name_constants';
 
 export function GetAgentActionGroup(scope: Construct): AgentActionGroup {
 
@@ -67,7 +68,7 @@ export function GetAgentActionGroup(scope: Construct): AgentActionGroup {
     new RestaurantAssistDatabaseConstruct(scope, 'RestaurantAssistDatabaseStack');
     // Create Agent Action Group
     return new AgentActionGroup(scope, 'TableBookingsActionGroup', {
-        actionGroupName: 'TableBookingsActionGroup',
+        actionGroupName: agent_booking_action_group_name,
         description: 'Actions for getting table booking information, create a new booking or delete an existing booking',
         actionGroupExecutor: {
             lambdaDefinition: {
